@@ -1,32 +1,33 @@
+
 const express = require('express');
-const ytdl = require('ytdl-core');
-
 const app = express();
-const port = 3000; // You can change this port number as needed
+const youtubedl = require('youtube-dl');
 
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
+app.get('/api', (req, res) => {
+  const url = req.query.url; // Get the 'url' query parameter from the request
 
-app.get('/play', async (req, res) => {
-  try {
-    const videoURL = req.query.url;
-    
-    if (!ytdl.validateURL(videoURL)) {
-      throw new Error('Invalid YouTube URL');
-    }
-
-    const info = await ytdl.getInfo(videoURL);
-    const audioStream = ytdl(videoURL, { filter: 'audioonly' });
-
-    res.header('Content-Disposition', `attachment; filename="${info.title}.mp3"`);
-    audioStream.pipe(res);
-  } catch (error) {
-    res.status(400).send(error.message);
+  if (!url) {
+    return res.status(400).send('Missing URL parameter');
   }
+
+  const video = youtubedl(url);
+
+  video.on('info', function(info) {
+    console.log('Download started');
+    console.log('Title:', info.title);
+    console.log('Number of videos in playlist:', info.entries.length);
+  });
+
+  video.on('end', function() {
+    console.log('Download finished');
+    // You can send a response to the client here if needed
+    res.send('Download finished');
+  });
+
+  video.pipe(res); // Pipe the video stream directly to the response
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
-
