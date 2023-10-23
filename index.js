@@ -2,20 +2,25 @@ const express = require('express');
 const ytpl = require('ytpl');
 const app = express();
 const port = 3000;
-let videoUrls = [];
+
 let currentVideoIndex = 0;
 
-app.get('/', async (req, res) => {
-  try {
-    if (videoUrls.length === 0) {
-      const playlistId = 'PLNhIv1Ws_Em7mYb98lZnY942a9y3Fnrz-'; // Replace with your playlist ID
-      const playlistInfo = await ytpl(playlistId, { limit: Infinity });
-      videoUrls = playlistInfo.items.map(item => item.shortUrl);
-    }
+app.get('/', (req, res) => {
+  const playlistUrlParam = req.query.playlist; // Get the 'playlist' query parameter
 
-    if (currentVideoIndex < videoUrls.length) {
+  // Check if the 'playlist' query parameter is provided
+  if (!playlistUrlParam) {
+    return res.status(400).send('Please provide a playlist URL using the "playlist" query parameter.');
+  }
+
+  // Fetch the playlist information using ytpl
+  ytpl(playlistUrlParam, { limit: 10 })
+    .then(playlistInfo => {
+      const videoUrls = playlistInfo.items.map(item => item.shortUrl);
+      const totalVideos = videoUrls.length;
+
+      // Get the current video URL
       const videoUrl = videoUrls[currentVideoIndex];
-      currentVideoIndex++;
 
       // Create an HTML page with an audio player
       res.send(`
@@ -29,12 +34,14 @@ app.get('/', async (req, res) => {
           </body>
         </html>
       `);
-    } else {
-      res.send('Playlist completed.');
-    }
-  } catch (error) {
-    res.status(500).send('Error: ' + error.message);
-  }
+
+      // Move to the next video when the current one ends
+      currentVideoIndex = (currentVideoIndex + 1) % totalVideos;
+    })
+    .catch(error => {
+      console.error('Error fetching playlist:', error);
+      res.status(500).send('Error fetching playlist: ' + error.message);
+    });
 });
 
 app.listen(port, () => {
