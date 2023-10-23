@@ -1,33 +1,48 @@
-
 const express = require('express');
+const ytdl = require('ytdl-core');
 const app = express();
-const youtubedl = require('youtube-dl');
+const port = 3000;
 
-app.get('/api', (req, res) => {
-  const url = req.query.url; // Get the 'url' query parameter from the request
+const playlist = [
+  'youtube_video_url_1',
+  'youtube_video_url_2',
+  'youtube_video_url_3',
+  'youtube_video_url_4',
+  'youtube_video_url_5',
+  'youtube_video_url_6',
+  'youtube_video_url_7',
+  'youtube_video_url_8',
+  'youtube_video_url_9',
+  'youtube_video_url_10',
+  // Add more video URLs to your playlist
+];
 
-  if (!url) {
-    return res.status(400).send('Missing URL parameter');
-  }
+let currentVideoIndex = 0;
 
-  const video = youtubedl(url);
+app.get('/', (req, res) => {
+  // Get the current video URL
+  const videoUrl = playlist[currentVideoIndex];
 
-  video.on('info', function(info) {
-    console.log('Download started');
-    console.log('Title:', info.title);
-    console.log('Number of videos in playlist:', info.entries.length);
-  });
+  // Get the audio stream URL using ytdl-core
+  const stream = ytdl(videoUrl, { filter: 'audioonly' });
 
-  video.on('end', function() {
-    console.log('Download finished');
-    // You can send a response to the client here if needed
-    res.send('Download finished');
-  });
+  // Create an HTML page with an audio player
+  res.send(`
+    <html>
+      <body>
+        <h1>Playlist Audio Player</h1>
+        <p>Now playing: ${videoUrl}</p>
+        <audio controls autoplay>
+          <source src="${stream}" type="audio/mp4">
+        </audio>
+      </body>
+    </html>
+  `);
 
-  video.pipe(res); // Pipe the video stream directly to the response
+  // Move to the next video when the current one ends
+  currentVideoIndex = (currentVideoIndex + 1) % playlist.length;
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server is listening on port ${port}`);
 });
