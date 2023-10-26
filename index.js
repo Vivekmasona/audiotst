@@ -1,29 +1,25 @@
-const express = require('express');
+// Import the Axios library
 const axios = require('axios');
-const fs = require('fs');
-const app = express();
-const port = 3000;
 
-app.get('/img', async (req, res) => {
-  const ytLink = req.query.url; // Get the URL parameter 'url'
-
-  try {
-    // Fetch the image from the provided URL (e.g., a YouTube thumbnail)
-    const response = await axios.get(ytLink, { responseType: 'stream' });
-
-    // Set the response headers
-    res.setHeader('Content-Type', response.headers['content-type']);
-    res.setHeader('Content-Disposition', 'attachment; filename=image.jpg'); // You can adjust the filename if needed
-
-    // Pipe the image to the response
-    response.data.pipe(res);
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).send('Error');
+// Define the request options
+const options = {
+  method: 'GET', // HTTP GET method
+  url: 'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent', // API endpoint
+  headers: {
+    'X-RapidAPI-Key': '650590bd0fmshcf4139ece6a3f8ep145d16jsn955dc4e5fc9a', // RapidAPI Key
+    'X-RapidAPI-Host': 'cricbuzz-cricket.p.rapidapi.com' // RapidAPI Host
   }
-});
+};
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Use a try-catch block to handle any potential errors
+try {
+  // Make the HTTP request using Axios and the provided options
+  const response = await axios.request(options);
+
+  // Log the response data to the console
+  console.log(response.data);
+} catch (error) {
+  // If there's an error, log it to the console
+  console.error(error);
+}
 
