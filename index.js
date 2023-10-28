@@ -1,19 +1,22 @@
 const express = require('express');
-const ytdl = require('ytdl-core');
+const ffmpeg = require('fluent-ffmpeg');
 const app = express();
 const port = 3000;
 
-app.get('/play', (req, res) => {
-  const videoURL = 'LIVE_VIDEO_URL_HERE'; // Live video ka URL yahan par replace kare
+app.get('/stream', (req, res) => {
+  const videoURL = req.query.url; // YouTube live video ka URL
 
-  // YouTube video ko audio me fetch kare
-  const audioStream = ytdl(videoURL, { filter: 'audioonly' });
-
-  // Set the appropriate content type for audio
+  // Set response content type to audio/mpeg
   res.header('Content-Type', 'audio/mpeg');
 
-  // Pipe audio stream to response
-  audioStream.pipe(res);
+  // Create an FFmpeg instance to process the live video stream
+  const command = ffmpeg(videoURL)
+    .audioCodec('libmp3lame')
+    .audioBitrate(128)
+    .format('mp3');
+
+  // Stream the audio to the response
+  command.pipe(res, { end: true });
 });
 
 app.listen(port, () => {
