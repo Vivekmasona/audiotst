@@ -1,22 +1,36 @@
 const express = require('express');
-const ffmpeg = require('fluent-ffmpeg');
+const ytdl = require('ytdl-core');
+const fluentFfmpeg = require('fluent-ffmpeg');
+const bodyParser = require('body-parser');
 const app = express();
 const port = 3000;
 
-app.get('/stream', (req, res) => {
-  const videoURL = req.query.url; // YouTube live video ka URL
+app.use(bodyParser.urlencoded({ extended: true }));
 
-  // Set response content type to audio/mpeg
-  res.header('Content-Type', 'audio/mpeg');
+app.post('/download', async (req, res) => {
+  const { videoUrl } = req.body;
+  const outputFileName = 'output.mp4';
 
-  // Create an FFmpeg instance to process the live video stream
-  const command = ffmpeg(videoURL)
-    .audioCodec('libmp3lame')
-    .audioBitrate(128)
-    .format('mp3');
+  // Download the YouTube video using ytdl-core
+  const videoReadableStream = ytdl(videoUrl, { filter: 'audioandvideo' });
 
-  // Stream the audio to the response
-  command.pipe(res, { end: true });
+  // Convert the video using fluent-ffmpeg
+  fluentFfmpeg(videoReadableStream)
+    .audioCodec('aac')
+    .videoCodec('libx264')
+    .format('mp4')
+    .on('end', () => {
+      // Respond with the video file to the client
+      res.download(outputFileName, () => {
+        // Clean up the temporary file after download
+        fs.unlink(outputFileName, (err) => {
+          if (err) {
+            console.error('Error deleting temporary file:', err);
+          }
+        });
+      });
+    })
+    .save(outputFileName);
 });
 
 app.listen(port, () => {
