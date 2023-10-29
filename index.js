@@ -1,36 +1,40 @@
 const express = require('express');
 const ytdl = require('ytdl-core');
-const fluentFfmpeg = require('fluent-ffmpeg');
-const bodyParser = require('body-parser');
+const fs = require('fs');
+const axios = require('axios');
+
 const app = express();
 const port = 3000;
 
-app.use(bodyParser.urlencoded({ extended: true }));
+app.get('/download', async (req, res) => {
+  try {
+    const videoUrl = req.query.videoUrl;
+    const posterUrl = req.query.posterUrl;
 
-app.post('/download', async (req, res) => {
-  const { videoUrl } = req.body;
-  const outputFileName = 'output.mp4';
+    // Fetch the poster image
+    const response = await axios.get(posterUrl, { responseType: 'arraybuffer' });
+    const posterData = response.data;
 
-  // Download the YouTube video using ytdl-core
-  const videoReadableStream = ytdl(videoUrl, { filter: 'audioandvideo' });
+    const info = await ytdl.getInfo(videoUrl);
+    const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+    
+    if (audioFormats.length === 0) {
+      return res.send('No audio formats found for this video.');
+    }
+    
+    const audioFormat = audioFormats[0];
+    const audioStream = ytdl(videoUrl, { quality: audioFormat.itag });
+    const filename = `${info.videoDetails.title}.mp3`;
 
-  // Convert the video using fluent-ffmpeg
-  fluentFfmpeg(videoReadableStream)
-    .audioCodec('aac')
-    .videoCodec('libx264')
-    .format('mp4')
-    .on('end', () => {
-      // Respond with the video file to the client
-      res.download(outputFileName, () => {
-        // Clean up the temporary file after download
-        fs.unlink(outputFileName, (err) => {
-          if (err) {
-            console.error('Error deleting temporary file:', err);
-          }
-        });
-      });
-    })
-    .save(outputFileName);
+    audioStream.pipe(fs.createWriteStream(filename));
+    
+    // Combine the audio file and poster here
+    // You can use 'posterData' and 'filename' to customize the combination
+    
+    return res.send('Audio downloaded successfully with poster.');
+  } catch (error) {
+    return res.send('Error: ' + error);
+  }
 });
 
 app.listen(port, () => {
